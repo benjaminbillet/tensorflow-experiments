@@ -73,3 +73,47 @@ def match_lum(content_img, style_img):
 
     new_img = tf.stack([style_y_corrected, style_channels[1], style_channels[2]], axis=-1)
     return tf.image.yuv_to_rgb(new_img)
+
+
+def matrix_pow(m, p):
+    s, u, v = tf.linalg.svd(m)
+    s_pow = tf.linalg.diag(tf.pow(s, p))
+    result = tf.matmul(tf.matmul(u, s_pow), v, transpose_b=True)
+    return result
+
+
+def covariance_matrix(img, means):
+    flattened = tf.reshape(img, [-1, 3])
+    flattened = tf.subtract(flattened, [means])
+    cov = tf.matmul(flattened, flattened, transpose_a=True)
+    cov = tf.divide(cov, flattened.shape[0])
+    return cov
+
+
+def match_color_histogram(source_img, dest_img):
+    dest_channels = tf.unstack(dest_img, axis=-1)
+    dest_means = [tf.math.reduce_mean(dest_channels[i]) for i in range(len(dest_channels))]
+
+    source_channels = tf.unstack(source_img, axis=-1)
+    source_means = [tf.math.reduce_mean(source_channels[i]) for i in range(len(source_channels))]
+
+    dest_cov = covariance_matrix(dest_img[0], dest_means)
+    source_cov = covariance_matrix(source_img[0], source_means)
+
+    beta = tf.matmul(matrix_pow(source_cov, 0.5), matrix_pow(dest_cov, -0.5))
+    alpha = tf.matmul(beta, tf.reshape(dest_means, [3, 1]))
+    alpha = source_means - tf.reshape(alpha, [1, 3])
+
+    # histogram matched version, for each pixel p, we have p' = alpha*p+beta
+    flattened = tf.reshape(dest_img, [-1, 3])
+    pixels = tf.unstack(flattened, axis=-1)
+    pixels = tf.matmul(beta, pixels)
+    pixels = tf.add(tf.stack(pixels, -1), alpha)
+
+    # this is equivalent, but very slow
+    # pixels = tf.map_fn(
+    #     lambda p: tf.add(tf.reshape(tf.matmul(beta, tf.reshape(p, [3, 1])), [1, 3]), alpha),
+    #     flattened)
+
+    new_img = tf.reshape(pixels, dest_img.shape)
+    return new_img
