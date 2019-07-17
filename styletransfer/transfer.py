@@ -3,7 +3,7 @@ from losses import style_content_loss, total_variation_loss
 from train import train
 
 
-def transfer_style(content_img, style_img, alpha=1e1, beta=1e-2, total_variation_weight=1e8, style_weights=[1.0, 1.0, 1.0, 1.0, 1.0], epochs=20):
+def transfer_style(content_img, style_img, initial_gradients=None, alpha=1e1, beta=1e-2, total_variation_weight=1e8, style_weights=[1.0, 1.0, 1.0, 1.0, 1.0], epochs=20):
     content_layers = ['block5_conv1']
     content_weights = [1.0]
 
@@ -13,7 +13,10 @@ def transfer_style(content_img, style_img, alpha=1e1, beta=1e-2, total_variation
                     'block4_conv1',
                     'block5_conv1']
 
-    return transfer_style_advanced(content_img, style_img, content_img, content_layers, style_layers, content_weights, style_weights, alpha, beta, total_variation_weight, epochs)
+    if initial_gradients is None:
+        initial_gradients = content_img
+
+    return transfer_style_advanced(content_img, style_img, initial_gradients, content_layers, style_layers, content_weights, style_weights, alpha, beta, total_variation_weight, epochs)
 
 
 def merge_styles(coarse_style, fine_style, content_weights=[1.0], style_weights=[1.0, 1.0], beta=1e0, total_variation_weight=1e8, epochs=20):

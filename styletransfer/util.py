@@ -20,6 +20,20 @@ def load_img(path_to_img, max_dim=512):
     return img
 
 
+def upscale(img, target_shape):
+    shape = tf.cast(tf.shape(img)[:-1], tf.float32)
+
+    long_dim = max(shape)
+    target_long_dim = max(target_shape)
+    scale = target_long_dim / long_dim
+
+    new_shape = tf.cast(shape * scale, tf.int32)
+
+    img = tf.image.resize(img, target_shape)
+    img = img[tf.newaxis, :]
+    return img
+
+
 def download_img(filename, url_to_img):
     img_path = tf.keras.utils.get_file(filename, url_to_img)
     return load_img(img_path)
