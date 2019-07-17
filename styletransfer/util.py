@@ -42,3 +42,34 @@ def save_img(image, name, folder='output'):
     os.makedirs(folder, mode=0o777, exist_ok=True)
     file_name = os.path.join(folder, name)
     mpl.image.imsave(file_name, image)
+
+
+def apply_lum(content_img, style_img):
+    style_yuv = tf.image.rgb_to_yuv(style_img)
+    style_channels = tf.unstack(style_yuv, axis=-1)
+
+    content_yuv = tf.image.rgb_to_yuv(content_img)
+    content_channels = tf.unstack(content_yuv, axis=-1)
+
+    new_img = tf.stack([style_channels[0], content_channels[1], content_channels[2]], axis=-1)
+    return tf.image.yuv_to_rgb(new_img)
+
+
+def match_lum(content_img, style_img):
+    content_yuv = tf.image.rgb_to_yuv(content_img)
+    content_channels = tf.unstack(content_yuv, axis=-1)
+    content_y_mean = tf.math.reduce_mean(content_channels[0])
+    content_y_stddev = tf.math.reduce_std(content_channels[0])
+
+    style_yuv = tf.image.rgb_to_yuv(style_img)
+    style_channels = tf.unstack(style_yuv, axis=-1)
+    style_y_mean = tf.math.reduce_mean(style_channels[0])
+    style_y_stddev = tf.math.reduce_std(style_channels[0])
+
+    stddev_ratio = content_y_stddev / style_y_stddev
+    style_y_corrected = tf.map_fn(
+        lambda y: stddev_ratio * (y - style_y_mean) + content_y_mean,
+        style_channels[0])
+
+    new_img = tf.stack([style_y_corrected, style_channels[1], style_channels[2]], axis=-1)
+    return tf.image.yuv_to_rgb(new_img)
