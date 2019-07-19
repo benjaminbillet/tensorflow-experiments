@@ -25,5 +25,6 @@ def high_pass_x_y(image):
 
 
 def total_variation_loss(image):
+    # maybe try with tf.image.total_variation (take the sum of absolute error, instead of this average of quadratic error)
     x_deltas, y_deltas = high_pass_x_y(image)
     return tf.reduce_mean(x_deltas**2) + tf.reduce_mean(y_deltas**2)
